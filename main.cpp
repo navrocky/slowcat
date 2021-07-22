@@ -23,6 +23,7 @@ int main(int argc, char** argv)
             ("help", "this help")
             ("portion,P", po::value<int>(), "portion size in bytes")
             ("rate,R", po::value<float>(), "read rate in portions per second")
+            ("repeat", po::value<int>(), "repeat N times (0 - forever)")
             ;
 
     po::options_description hiddenDesc("Hidden options");
@@ -59,6 +60,14 @@ int main(int argc, char** argv)
         if (!v.empty())
             portionSize = v.as<int>();
 
+        int repeat = 1;
+        v = vm["repeat"];
+        if (!v.empty())
+        {
+            repeat = v.as<int>();
+            if (repeat <= 0) repeat = INT_MAX;
+        }
+
         float rate = 0;
         v = vm["rate"];
         if (!v.empty())
@@ -66,26 +75,29 @@ int main(int argc, char** argv)
 
         vector<char> buf(portionSize, 0);
 
-        ifstream s(fileName.c_str(), ios_base::in);
-
         int iterationMsecs = rate != 0.0 ? 1000.0 / rate : 0;
 
-        while (!s.eof())
+        for (int i = 0; i < repeat; i++)
         {
-            using namespace boost::chrono;
+            ifstream s(fileName.c_str(), ios_base::in);
 
-            time_point<high_resolution_clock> startTime = high_resolution_clock::now();
+            while (!s.eof())
+            {
+                using namespace boost::chrono;
 
-            s.read(buf.data(), portionSize);
-            int readed = s.gcount();
-            cout.write(buf.data(), readed);
+                time_point<high_resolution_clock> startTime = high_resolution_clock::now();
 
-            time_point<high_resolution_clock> endTime = high_resolution_clock::now();
+                s.read(buf.data(), portionSize);
+                int readed = s.gcount();
+                cout.write(buf.data(), readed);
 
-            int msecs = duration_cast<milliseconds>(endTime - startTime).count();
-            int waitForMsecs = iterationMsecs - msecs;
-            if (waitForMsecs > 0)
-                boost::this_thread::sleep_for(milliseconds(waitForMsecs));
+                time_point<high_resolution_clock> endTime = high_resolution_clock::now();
+
+                int msecs = duration_cast<milliseconds>(endTime - startTime).count();
+                int waitForMsecs = iterationMsecs - msecs;
+                if (waitForMsecs > 0)
+                    boost::this_thread::sleep_for(milliseconds(waitForMsecs));
+            }
         }
     }
     catch (const exception& e)
