@@ -1,3 +1,6 @@
 /debug/
 /release/
+/dist/
+/build
 /CMakeLists.txt.user
+/CMakeUserPresets.json
